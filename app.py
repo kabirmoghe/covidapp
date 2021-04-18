@@ -15,7 +15,7 @@ def countyinfo():
 		county = request.form["cty"]
 		stat = covidapp.county_stats(county)
 	
-		return f"<p>April 2021 Infection Rate: {stat}</p>"
+		return f"<p>April 2021 Infection Rate for {county}: {stat}</p>"
 	else:
 		return render_template("data.html")
 
