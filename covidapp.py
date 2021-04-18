@@ -1,4 +1,4 @@
-from tkinter import *
+#from tkinter import *
 import numpy as np
 import pandas as pd
 import requests
@@ -582,19 +582,19 @@ def county_stats(county_name):
     else:
         return "Please Enter a Valid County Name (i.e. Orange County, CA)"
 
-root = Tk()
-root.title('April 2021 COVID-19 Infection Rate for my County')
+#root = Tk()
+#root.title('April 2021 COVID-19 Infection Rate for my County')
 
-e = Entry(root)
-e.pack()
+#e = Entry(root)
+#e.pack()
 
-def myClick():
-    county_info = 'April Infection Rate per 100,000: {stat}'.format(stat = county_stats(e.get()))
-    myLabel = Label(root, text = county_info)
-    myLabel.pack()
+#def myClick():
+#    county_info = 'April Infection Rate per 100,000: {stat}'.format(stat = county_stats(e.get()))
+#    myLabel = Label(root, text = county_info)
+#    myLabel.pack()
 
-myButton = Button(root, text= "Enter", command = myClick)
-myButton.pack()
+#myButton = Button(root, text= "Enter", command = myClick)
+#myButton.pack()
 
-root.mainloop()
-e.insert(0, 'Your County Name')
+#root.mainloop()
+#e.insert(0, 'Your County Name')
