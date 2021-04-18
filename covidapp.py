@@ -245,7 +245,6 @@ def create_covid_pop_data():
     
     cases2020 = cases.iloc[:,:349]
     cases2021 = cases.iloc[:,349:]
-    cases2021.drop(['2021-04-08', '2021-04-09', '2021-04-10','2021-04-11', '2021-04-12','2021-04-13','2021-04-14','2021-04-15','2021-04-16'], axis = 1, inplace = True)
     
     # Creates the cumulative deaths dataframe
     deaths = pd.read_csv(deaths_url)
@@ -256,7 +255,6 @@ def create_covid_pop_data():
 
     deaths2020 = deaths.iloc[:,:349]
     deaths2021 = deaths.iloc[:,349:]
-    deaths2021.drop(['2021-04-08', '2021-04-09', '2021-04-10','2021-04-11', '2021-04-12','2021-04-13','2021-04-14','2021-04-15','2021-04-16'], axis = 1, inplace = True)
     # Converts '\n' value for McDowell County, NC to the same as November and converts random string values to integers in Deaths dataset
 
     def str_int(val):
@@ -578,7 +576,7 @@ def main_function():
 def county_stats(county_name):
     data = main_function()
     if county_name in data['County Name'].values:
-        return data[data['County Name'] == str(county_name)]['April (2021) Infection Rate (per 100,000 as of 4/7/2021)'].iloc[0]
+        return data[data['County Name'] == str(county_name)]['April (2021) Infection Rate (per 100,000 as of 4/17/2021)'].iloc[0]
     else:
         return "Please Enter a Valid County Name (i.e. Orange County, CA)"
 
