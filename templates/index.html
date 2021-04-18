@@ -2,15 +2,15 @@
 <html>
 <head>
 	<title>Home</title>
-</head>
+	<link rel="stylesheet" type = "text/css" href="{{ url_for('static', filename = 'style.css')}}"></head>
 <body>
 	{% extends "base.html" %}
 	{% block titles %}Home Page{% endblock %}
 	{% block content%}
-	<h1>How to use this site</h1>
-		<p>Hi! I'm Kabir! This tool will allow you to explore the April Infection rate per 100,000 for any county in the United States. To enter your county, please put it in the following form: "Your County Name" County, "Capitalized State Abbreviation."</p>
-		<br>
-		<p>*Note: the first letters of your county name and "County" should be capitalized.</p>
+	<br>
+	<h1>Learn about the spread of COVID-19 in your county. </h1>
+	<p>This web app will allow you to explore the April Infection rate per 100,000 for any county in the United States. To enter your county, <strong>go to the data tab</strong> and enter your county in the following form: <i>"Your County Name" County, "Capitalized State Abbreviation"</i></p>
+	<p><strong>Note:</strong> the first letters of your county name and "County" should be capitalized.</p>
 	{% endblock %}
 </body>
 </html>

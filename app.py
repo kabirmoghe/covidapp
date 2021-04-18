@@ -10,12 +10,13 @@ def home():
     return render_template("index.html")
 
 @app.route("/countyinfo", methods = ['POST', 'GET'])
+
 def countyinfo():
 	if request.method == "POST":
 		county = request.form["cty"]
 		stat = covidapp.county_stats(county)
 	
-		return f"<p>April 2021 Infection Rate for {county}: {stat}</p>"
+		return render_template("result.html", county = county, stat = stat)
 	else:
 		return render_template("data.html")
 
