@@ -1,4 +1,3 @@
-#from tkinter import *
 import numpy as np
 import pandas as pd
 import requests
@@ -576,23 +575,11 @@ def main_function():
 def county_stats(county_name):
     data = main_function()
     if county_name in data['County Name'].values:
-        return data[data['County Name'] == str(county_name)]['April (2021) Infection Rate (per 100,000 as of 4/17/2021)'].iloc[0]
+        cols = data.columns
+        inf_col = 0
+        for col in cols:
+            if "Infection" in col.split() and "as" in col.split():
+                inf_col = col
+        return data[data['County Name'] == str(county_name)][inf_col].iloc[0]
     else:
         return "Please Enter a Valid County Name (i.e. Orange County, CA)"
-
-#root = Tk()
-#root.title('April 2021 COVID-19 Infection Rate for my County')
-
-#e = Entry(root)
-#e.pack()
-
-#def myClick():
-#    county_info = 'April Infection Rate per 100,000: {stat}'.format(stat = county_stats(e.get()))
-#    myLabel = Label(root, text = county_info)
-#    myLabel.pack()
-
-#myButton = Button(root, text= "Enter", command = myClick)
-#myButton.pack()
-
-#root.mainloop()
-#e.insert(0, 'Your County Name')
