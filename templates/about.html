@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Live County COVID-19 Data</title>
+	<link rel="stylesheet" type = "text/css" href="{{ url_for('static', filename = 'style.css')}}">
+	<link rel="shortcut icon" href="{{ url_for('static', filename = 'favicon.ico') }}">
+</head>
+<body>
+	{% extends "base.html" %}
+	{% block titles %}Home Page{% endblock %}
+	{% block content%}
+	<br>
+	<h1>About this project. </h1>
+	<p>My name is Kabir, and I created this tool to provide information on a granular level about the spread and local impact of COVID-19.</p>
+	<p><a href="https://towardsdatascience.com/county-based-covid-19-dataset-and-analytical-trends-ff1617030ba8" target="_blank">Click here</a> to learn about some analysis I performed last August using the data from then.</p>
+	{% endblock %}
+</body>
+</html>

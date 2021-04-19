@@ -10,7 +10,6 @@ def home():
     return render_template("index.html")
 
 @app.route("/countyinfo", methods = ['POST', 'GET'])
-
 def countyinfo():
 	if request.method == "POST":
 		county = request.form["cty"]
@@ -21,6 +20,10 @@ def countyinfo():
 			return render_template("undef_result.html", stat = stat)
 	else:
 		return render_template("data.html")
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
 
 if __name__ == '__main__':
     app.run(debug = True)
