@@ -224,6 +224,7 @@ def create_mask_data():
 # URLs for cases, deaths, and population data from the above website
 
 def create_covid_pop_data():
+
     cases_url = 'https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'
     deaths_url = 'https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'
     pop_url = 'https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_county_population_usafacts.csv'
@@ -241,9 +242,14 @@ def create_covid_pop_data():
     cases = cases[cases['County Name'] != 'Statewide Unallocated'].reset_index(drop = True)
     cases['County Name'] = cases['County Name']  + ', ' + cases['State']
     cases['County Name'] = cases['County Name'].apply(county_cleaner)
+    cases.drop(cases.columns[-7:], axis = 1, inplace = True)
     
     cases2020 = cases.iloc[:,:349]
     cases2021 = cases.iloc[:,349:]
+    
+    # Gets county names
+    
+    ctynames = cases['County Name']
     
     # Creates the cumulative deaths dataframe
     deaths = pd.read_csv(deaths_url)
@@ -251,6 +257,7 @@ def create_covid_pop_data():
     deaths = deaths[deaths['County Name'] != 'Statewide Unallocated'].reset_index(drop = True)
     deaths['County Name'] = deaths['County Name']  + ', ' + deaths['State']
     deaths['County Name'] = deaths['County Name'].apply(county_cleaner)
+    deaths.drop(deaths.columns[-7:], axis = 1, inplace = True)
 
     deaths2020 = deaths.iloc[:,:349]
     deaths2021 = deaths.iloc[:,349:]
@@ -284,6 +291,7 @@ def create_covid_pop_data():
     d_dates2021 = deaths2021.columns.values
     
     # Defines the function to compile the daily data into monthly data
+    
     
     def m_compiler(df, c_or_d):
         
@@ -348,7 +356,7 @@ def create_covid_pop_data():
                             break
         
                 monthly_df = c_df[d_mo_ls2021]
-            
+        
         def num_to_mo(cols):
             sing_nums = cols.map(lambda col: int(col.split('-')[1]))
             return sing_nums
@@ -367,10 +375,22 @@ def create_covid_pop_data():
             else:
                 monthly_df.columns = monthly_df.columns.map(d_mos_2021) 
         
+        monthly_df = pd.concat([ctynames, monthly_df], axis = 1)
+        
+        prob_ctys = []
+
+        for i in range(1, len(monthly_df.columns)-1):
+            locs = list(monthly_df[monthly_df[monthly_df.columns[i]] > monthly_df[monthly_df.columns[i+1]]].index)
+            if locs not in prob_ctys:
+                monthly_df.drop(locs, inplace = True)
+            prob_ctys.append(locs)
+    
+        monthly_df.reset_index(drop = True, inplace = True)
+    
         if year == '2020':
             
-            c_df = pd.concat([c_df, monthly_df], axis = 1)
-            
+            c_df = pd.merge(c_df, monthly_df, on = 'County Name')
+              
             split1 = c_df.iloc[:,:4]
             split2 = c_df.iloc[:,4:]
         
@@ -381,29 +401,31 @@ def create_covid_pop_data():
         
         else:
             c_df = monthly_df
-        
-            if len(c_df.columns) == 1:
-                if c_or_d == 'c':
-                    c_df.iloc[:,0] = c_df.iloc[:,0] - cases2020.iloc[:,-1]
-                else:
-                    c_df.iloc[:,0] = c_df.iloc[:,0] - deaths2020.iloc[:,-1]
+            
+            if c_or_d == 'c':
+                dec_jan = pd.merge(cases[['County Name','2020-12-31']], c_df, on = "County Name")
             else:
-                for i in range(1,len(c_df.columns)):
-                    if c_or_d == 'c':
-                        c_df.iloc[:,-i] = c_df.iloc[:, -i] - c_df.iloc[:,-i-1]
-                    else:
-                        c_df.iloc[:,-i] = c_df.iloc[:, -i] - c_df.iloc[:,-i-1]
-                if c_or_d == 'c':
-                    c_df.iloc[:,0] = c_df.iloc[:,0] - cases2020.iloc[:,-1]
-                else:
-                    c_df.iloc[:,0] = c_df.iloc[:,0] - deaths2020.iloc[:,-1]
+                dec_jan = pd.merge(deaths[['County Name','2020-12-31']], c_df, on = "County Name")
+            
+            split1 = dec_jan.iloc[:,:1]
+            split2 = dec_jan.iloc[:,1:]
         
+            if len(split2.columns) == 2:
+                split2.iloc[:,1] = split2.iloc[:,1] - split2.iloc[:,0]
+            
+            else:
+                for i in range(1,len(split2.columns)):
+                    split2.iloc[:,-i] = split2.iloc[:, -i] - split2.iloc[:,-i-1]
+            c_df = pd.concat([split1, split2], axis = 1)
+            c_df.drop(c_df.columns[1], axis = 1, inplace = True)
+    
         return c_df
-        
-    c_mo_us = pd.concat([m_compiler(cases2020, 'c'), m_compiler(cases2021, 'c')], axis = 1).drop(['countyFIPS', 'State', 'StateFIPS'], axis = 1)
-    d_mo_us = pd.concat([m_compiler(deaths2020, 'd').drop(['countyFIPS', 'State', 'StateFIPS'], axis = 1), m_compiler(deaths2021, 'd')], axis = 1)
+    
+    c_mo_us = pd.merge(m_compiler(cases2020, 'c'), m_compiler(cases2021, 'c'), on = 'County Name').drop(['countyFIPS', 'State', 'StateFIPS'], axis = 1)
+    d_mo_us = pd.merge(m_compiler(deaths2020, 'd').drop(['countyFIPS', 'State', 'StateFIPS'], axis = 1), m_compiler(deaths2021, 'd'), on = 'County Name')
     
     covid_data = m_compiler(cases2020, 'c').iloc[:, :4]
+    
     pop.drop(['countyFIPS', 'State'], axis = 1, inplace = True)
     covid_data = pd.merge(covid_data, pop, on = 'County Name')        
     
@@ -583,3 +605,35 @@ def county_stats(county_name):
         return data[data['County Name'] == str(county_name)][inf_col].iloc[0]
     else:
         return "Please Enter a Valid County Name (i.e. Orange County, CA)"
+
+def ranker(county_name):
+    
+    data = main_function()
+    
+    cols = data.columns
+    inf_col = 0
+    for col in cols:
+        if "Infection" in col.split() and "as" in col.split():
+            inf_col = col
+
+    data = data.sort_values(by = inf_col, ascending = False)[['County Name', inf_col]].reset_index(drop = True)
+
+    ctynum = len(data)
+
+    high25pct = round(ctynum*0.25)
+    low25pct = round(ctynum*0.75)
+    if county_name in data['County Name'].values:
+        rank = data[data['County Name']==county_name].index.values[0]
+        if rank < high25pct:
+            pct = 'top 25%'
+            return rank+1, pct, inf_col
+        elif high25pct < rank < low25pct:
+            pct = 'middle 50%'
+            return rank+1, pct, inf_col
+        else:
+            pct = 'bottom 25%'
+            return rank+1, pct, inf_col
+    else:
+        return "Please Enter a Valid County Name (i.e. Orange County, CA)"
+    
+
