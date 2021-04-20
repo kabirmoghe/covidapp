@@ -15,8 +15,8 @@ def countyinfo():
 		county = request.form["cty"]
 		stat = covidapp.county_stats(county)
 		if len(str(stat).split()) == 1:
-			rank, pct, info = covidapp.ranker(county)
-			return render_template("result.html", county = county, stat = stat, rank = rank, pct = pct, info = info)
+			info = covidapp.ranker(county)
+			return render_template("result.html", county = county, stat = stat, info = info)
 		else:
 			return render_template("undef_result.html", stat = stat)
 	else:

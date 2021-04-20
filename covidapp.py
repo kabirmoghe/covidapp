@@ -626,13 +626,11 @@ def ranker(county_name):
         rank = data[data['County Name']==county_name].index.values[0]
         if rank < high25pct:
             pct = 'top 25%'
-            return rank+1, pct, inf_col
         elif high25pct < rank < low25pct:
             pct = 'middle 50%'
-            return rank+1, pct, inf_col
         else:
             pct = 'bottom 25%'
-            return rank+1, pct, inf_col
+        return "With a rank of {rank}, {county_name} falls within the {pct} of counties in terms of {inf_col}.".format(rank = rank, county_name = county_name, pct = pct, inf_col = inf_col) 
     else:
         return "Please Enter a Valid County Name (i.e. Orange County, CA)"
     
