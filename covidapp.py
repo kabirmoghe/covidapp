@@ -22,7 +22,7 @@ def create_race_data():
     
     race_data = pd.merge(pop, stat_data)
     
-    race_cols = ['African American', 'Hispanic', 'Asian American', 'White American', 'Native American and Alaska Native', 'Native Hawaiian and Other Pacific Islander']
+    race_cols = ['African American', 'Hispanic', 'Asian American', 'White American', 'Native American/Alaska Native', 'Native Hawaiian/Pacific Islander']
 
     for col in race_cols:
         race_data['% ' + str(col)] = round(race_data[col + ' Population'] / race_data['Population'] * 100,2)
@@ -98,7 +98,9 @@ def create_edu_data():
     edu_data = pd.merge(pop, edu_data, on = 'County Name')
     
     edu_data.drop(['State', 'Population'], axis = 1, inplace = True)
-        
+    
+    edu_data.rename(columns = {'Percent of adults completing some college or associate\'s degree, 2015-19': '% Adults With Degree 2015-19'}, inplace = True)
+
     return edu_data
 
 # Creates a dataframe of statewide data about mask reqs
@@ -455,14 +457,10 @@ def create_covid_pop_data():
     for d_mo in d_cols:
         d_rates[d_mo.split()[0] + ' ' + d_mo.split()[2] + ' Mortality Rate (per 100,000)'] = round(cd[d_mo]/cd['Population'] * 100000, 2)
         
-    #for i in range(len(c_mo_us.columns)):
-    #    covid_data = pd.concat([covid_data, c_mo_us.iloc[:,i:i+1], d_mo_us.iloc[:, i:i+1], c_rates.iloc[:, i:i+1], d_rates.iloc[:, i:i+1]], axis = 1)  
-    
-    
     for i in range(0, len(c_rates.columns)):
         covid_data = pd.merge(covid_data, pd.concat([cd['County Name'], c_rates.iloc[:,i:i+1]], axis = 1), on = 'County Name')
         covid_data = pd.merge(covid_data, pd.concat([cd['County Name'], d_rates.iloc[:,i:i+1]], axis = 1), on = 'County Name')
-        
+    
     def projector(df, df2, c_or_d):
         mo_days = {1 : 31,
                    2 : (28,29),
@@ -596,42 +594,39 @@ def main_function():
 
 def county_stats(county_name):
     data = main_function()
-    if county_name in data['County Name'].values:
-        cols = data.columns
-        inf_col = 0
-        for col in cols:
-            if "Infection" in col.split() and "as" in col.split():
-                inf_col = col
-        return data[data['County Name'] == str(county_name)][inf_col].iloc[0]
-    else:
-        return "Please Enter a Valid County Name (i.e. Orange County, CA)"
 
-def ranker(county_name):
-    
-    data = main_function()
-    
     cols = data.columns
+
     inf_col = 0
     for col in cols:
         if "Infection" in col.split() and "as" in col.split():
             inf_col = col
 
-    data = data.sort_values(by = inf_col, ascending = False)[['County Name', inf_col]].reset_index(drop = True)
+    sorted_data = data.sort_values(by = inf_col, ascending = False)[['County Name', inf_col]].reset_index(drop = True)
 
-    ctynum = len(data)
+    ctynum = len(sorted_data)
 
     high25pct = round(ctynum*0.25)
     low25pct = round(ctynum*0.75)
+
     if county_name in data['County Name'].values:
-        rank = data[data['County Name']==county_name].index.values[0]
+        des_row = data[data['County Name'] == str(county_name)]
+
+        des_row.rename(index = {des_row.index.values[0]: county_name}, inplace = True)
+
+        otherinfo = des_row.iloc[:, -11:]
+        
+        stat = des_row[inf_col].iloc[0]
+
+        rank = sorted_data[sorted_data['County Name']==county_name].index.values[0]
+
         if rank < high25pct:
             pct = 'top 25%'
         elif high25pct < rank < low25pct:
             pct = 'middle 50%'
         else:
             pct = 'bottom 25%'
-        return "With a rank of {rank}, {county_name} falls within the {pct} of counties in terms of {inf_col}.".format(rank = rank+1, county_name = county_name, pct = pct, inf_col = inf_col) 
+        info = "With a rank of {rank} out of {ctynum} included counties, {county_name} falls within the {pct} of counties in terms of {inf_col}.".format(rank = rank+1, ctynum = ctynum + 1, county_name = county_name, pct = pct, inf_col = inf_col) 
+        return otherinfo, stat, info
     else:
-        return "Please Enter a Valid County Name (i.e. Orange County, CA)"
-    
-
+        return "Please enter a valid county name (i.e. Orange County, CA). The county you entered, '{county_name}', may not have complete information.".format(county_name = county_name)
