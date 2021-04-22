@@ -4,17 +4,27 @@
 	<title>Live County COVID-19 Data</title>
 	<link rel="stylesheet" type = "text/css" href="{{ url_for('static', filename = 'style.css')}}">
 	<link rel="shortcut icon" href="{{ url_for('static', filename = 'favicon.ico') }}">
-
+	<meta name = 'viewport' content = "width = device-width, initial-scale=1.0">
 </head>
 <body>
 	{% extends "base.html" %}
 	{% block titles %}Result{% endblock %}
-	{% block content%}
+	{% block content %}
 	<br>
-	<h3>My Results:</h3>
+	<h3>My Results</h3>
+	
 	<p>April 2021 Infection rate for {{county}}: <strong>{{stat}}</strong> (cases per 100,000)</p>
 	<p>{{info}}</p>
-	<img style="max-width: 300px; height: auto;" src="{{url_for('static', filename='ratechart.png')}}" alt="Breakdown of Infection Rates and Rankings">
+	<img style="max-width: 100%; height: auto;" src="{{url_for('static', filename='ratechart.png')}}" alt="Breakdown of Infection Rates and Rankings">
+	<h5><br>Attributes of {{county}}</h5>
+	<div style="overflow-x:auto;">
+	{% for item in tbl%}
+            {{ item|safe }}
+	{% endfor %}
+	</div>
+	<br>
+	<button onclick="location.href = '/countyinfo';">Take me back</button>
+	
 	{% endblock %}
 </body>
 </html>
