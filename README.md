@@ -17,8 +17,6 @@ Unemployment, Income, and Education: [USDA](https://www.ers.usda.gov/data-produc
 
 Calculated Population Density: [USAFacts](https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/) and [ArcGIS](https://hub.arcgis.com/datasets/esri::usa-counties/about)
 
-Methodology
-
 In order to determine the "risk of infection" in a certain county, the 7-Day [rolling average](https://www.georgiaruralhealth.org/blog/what-is-a-moving-average-and-why-is-it-useful/) was used, which is the average number of new cases each day over the past week per 100,000 people. Since county-wide population varies, 100,000 is a commonly used number to have normalized rates across all counties, so simple percentages are scaled to a number of cases out of 100,000.
 
 To calculate risk from the rolling average, the methods from the [Harvard Global Health Institute](https://ethics.harvard.edu/files/center-for-ethics/files/key_metrics_and_indicators_v4.pdf) were used. Specifically, as shown by the "../static/risk_labeled.png," "low" risk (green) was determined as < 1 new cases per day, "moderately low" risk (yellow) as 1 or more but less than 10 new cases per day, "moderately high" risk (orange) as 10 or more but less than 25 new cases per day, and "high" risk (red) as 25 or more new cases per day (all according to the 7-day rolling average).
