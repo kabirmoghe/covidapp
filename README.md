@@ -1,3 +1,5 @@
+### My File
+
 This application provides information on a granular level about the spread and local impact of COVID-19. The app allows users to understand the current situation of the pandemic in their county, understand vaccination data, and explore the relationship between various county attributes and COVID-19 data.
 Sources
 
