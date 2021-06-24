@@ -1,8 +1,12 @@
-import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from urllib.request import urlopen
+import io
+from io import StringIO
+import os
+import boto3
+import readbucketdata
+
 
 # Creates COVID-19 County Level Dataset
 
@@ -236,354 +240,6 @@ def create_mask_data():
 # Data from usafacts.org (https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/)
 # URLs for cases, deaths, and population data from the above website
 
-'''
-
-def create_covid_pop_data():
-
-    cases_url = 'https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'
-    deaths_url = 'https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'
-    pop_url = 'https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_county_population_usafacts.csv'
-    
-    # Removes space in county names
-    
-    def county_cleaner(cty):
-        if cty.split(',')[0][-1] == ' ':
-            cty = '{County},{Abbr}'.format(County = cty.split(' ,')[0], Abbr = cty.split(' ,')[1])
-        return cty
-    
-    # Creates the cumulative cases dataframe
-    cases = pd.read_csv(cases_url)
-    cases['countyFIPS'] = cases['countyFIPS'].apply(lambda value: '0' + str(value) if len(str(value)) == 4 else str(value))
-    cases = cases[cases['County Name'] != 'Statewide Unallocated'].reset_index(drop = True)
-    cases['County Name'] = cases['County Name']  + ', ' + cases['State']
-    cases['County Name'] = cases['County Name'].apply(county_cleaner)
-    cases.drop(cases.columns[-3:], axis = 1, inplace = True)
-    
-    cases2020 = cases.iloc[:,:349]
-    cases2021 = cases.iloc[:,349:]
-    
-    # Gets county names
-    
-    ctynames = cases['County Name']
-    
-    # Creates the cumulative deaths dataframe
-    deaths = pd.read_csv(deaths_url)
-    deaths['countyFIPS'] = deaths['countyFIPS'].apply(lambda value: '0' + str(value) if len(str(value)) == 4 else str(value))
-    deaths = deaths[deaths['County Name'] != 'Statewide Unallocated'].reset_index(drop = True)
-    deaths['County Name'] = deaths['County Name']  + ', ' + deaths['State']
-    deaths['County Name'] = deaths['County Name'].apply(county_cleaner)
-    deaths.drop(deaths.columns[-3:], axis = 1, inplace = True)
-
-    deaths2020 = deaths.iloc[:,:349]
-    deaths2021 = deaths.iloc[:,349:]
-    # Converts '\n' value for McDowell County, NC to the same as November and converts random string values to integers in Deaths dataset
-
-    def str_int(val):
-        if type(val) == str:
-            return int(val)
-        else:
-            return val
-
-    #deaths.iloc[:, -1] = deaths.iloc[:, -1].apply(str_int)
-
-    # Creates the population dataframe
-    
-    pop = pd.read_csv(pop_url)
-    pop['countyFIPS'] = pop['countyFIPS'].apply(lambda value: '0' + str(value) if len(str(value)) == 4 else str(value))
-    pop = pop[pop['County Name'] != 'Statewide Unallocated'].reset_index(drop = True)
-    pop['County Name'] = pop['County Name']  + ', ' + pop['State']
-    pop = pd.DataFrame(pop).rename(columns = {'population':'Population'})
-    pop['County Name'] = pop['County Name'].apply(county_cleaner)
-
-    # Creates 'dates' as a list of all of the days past in 2020
-
-    c_dates2020 = cases2020.iloc[:,4:].columns.values
-    
-    c_dates2021 = cases2021.columns.values
-
-    d_dates2020 = deaths2020.iloc[:,4:].columns.values
-
-    d_dates2021 = deaths2021.columns.values
-    
-    # Defines the function to compile the daily data into monthly data
-    
-    
-    def m_compiler(df, c_or_d):
-        
-        year = df.columns[-1].split('-')[0]
-        
-        c_df = df.copy(deep = True)
-        
-        c_mos_2020 = {1:'January Cases (2020)', 2:'February Cases (2020)', 3:'March Cases (2020)', 4:'April Cases (2020)', 5:'May Cases (2020)', 6:'June Cases (2020)', 7:'July Cases (2020)', 8:'August Cases (2020)', 9:'September Cases (2020)', 10:'October Cases (2020)', 11:'November Cases (2020)', 12:'December Cases (2020)'}
-        c_mos_2021 = {1:'January Cases (2021)', 2:'February Cases (2021)', 3:'March Cases (2021)', 4:'April Cases (2021)', 5:'May Cases (2021)', 6:'June Cases (2021)', 7:'July Cases (2021)', 8:'August Cases (2021)', 9:'September Cases (2021)', 10:'October Cases (2021)', 11:'November Cases (2021)', 12:'December Cases (2021)'}
-        
-        d_mos_2020 = {1:'January Deaths (2020)', 2:'February Deaths (2020)', 3:'March Deaths (2020)', 4:'April Deaths (2020)', 5:'May Deaths (2020)', 6:'June Deaths (2020)', 7:'July Deaths (2020)', 8:'August Deaths (2020)', 9:'September Deaths (2020)', 10:'October Deaths (2020)', 11:'November Deaths (2020)', 12:'December Deaths (2020)'}
-        d_mos_2021 = {1:'January Deaths (2021)', 2:'February Deaths (2021)', 3:'March Deaths (2021)', 4:'April Deaths (2021)', 5:'May Deaths (2021)', 6:'June Deaths (2021)', 7:'July Deaths (2021)', 8:'August Deaths (2021)', 9:'September Deaths (2021)', 10:'October Deaths (2021)', 11:'November Deaths (2021)', 12:'December Deaths (2021)'}
-        
-        c_mo_ls2020 = list(range(int(c_dates2020[-1].split('-')[1])))
-        c_mo_ls2021 = list(range(int(c_dates2021[-1].split('-')[1])))
-        
-        d_mo_ls2020 = list(range(int(d_dates2020[-1].split('-')[1])))
-        d_mo_ls2021 = list(range(int(d_dates2021[-1].split('-')[1])))
-        
-        if c_or_d == 'c':
-            if year == '2020':
-                for i in range(int(c_dates2020[-1].split('-')[1])):
-                    for date in c_dates2020:
-                        while int(date.split('-')[1]) < i + 2:
-                            c_mo_ls2020.pop(i)
-                            c_mo_ls2020.insert(i,date)
-                            break
-        
-                monthly_df = c_df[c_mo_ls2020]
-        
-                c_df.drop(c_df.iloc[:,4:], axis = 1, inplace = True)
-                
-            else:
-                for i in range(int(c_dates2021[-1].split('-')[1])):
-                    for date in c_dates2021:
-                        while int(date.split('-')[1]) < i + 2:
-                            c_mo_ls2021.pop(i)
-                            c_mo_ls2021.insert(i,date)
-                            break
-        
-                monthly_df = c_df[c_mo_ls2021]
-                
-        elif c_or_d == 'd':
-            if year == '2020':
-                for i in range(int(d_dates2020[-1].split('-')[1])):
-                    for date in d_dates2020:
-                        while int(date.split('-')[1]) < i + 2:
-                            d_mo_ls2020.pop(i)
-                            d_mo_ls2020.insert(i,date)
-                            break
-        
-                monthly_df = c_df[d_mo_ls2020]
-        
-                c_df.drop(c_df.iloc[:,4:], axis = 1, inplace = True)
-            
-            else:
-                for i in range(int(d_dates2021[-1].split('-')[1])):
-                    for date in d_dates2021:
-                        while int(date.split('-')[1]) < i + 2:
-                            d_mo_ls2021.pop(i)
-                            d_mo_ls2021.insert(i,date)
-                            break
-        
-                monthly_df = c_df[d_mo_ls2021]
-        
-        def num_to_mo(cols):
-            sing_nums = cols.map(lambda col: int(col.split('-')[1]))
-            return sing_nums
-            
-        monthly_df.columns = num_to_mo(monthly_df.columns)
-            
-        if c_or_d == 'c':
-            if year == '2020':
-                monthly_df.columns = monthly_df.columns.map(c_mos_2020)
-            else:
-                monthly_df.columns = monthly_df.columns.map(c_mos_2021)
-        
-        elif c_or_d == 'd':
-            if year == '2020':
-                monthly_df.columns = monthly_df.columns.map(d_mos_2020)
-            else:
-                monthly_df.columns = monthly_df.columns.map(d_mos_2021) 
-        
-        monthly_df = pd.concat([ctynames, monthly_df], axis = 1)
-        
-        prob_ctys = []
-
-        for i in range(1, len(monthly_df.columns)-1):
-            locs = list(monthly_df[monthly_df[monthly_df.columns[i]] > monthly_df[monthly_df.columns[i+1]]].index)
-            if locs not in prob_ctys:
-                monthly_df.drop(locs, inplace = True)
-            prob_ctys.append(locs)
-    
-        monthly_df.reset_index(drop = True, inplace = True)
-    
-        if year == '2020':
-            
-            c_df = pd.merge(c_df, monthly_df, on = 'County Name')
-              
-            split1 = c_df.iloc[:,:4]
-            split2 = c_df.iloc[:,4:]
-        
-            for i in range(1,len(split2.columns)):
-                split2.iloc[:,-i] = split2.iloc[:,-i] - split2.iloc[:,-i-1]
-
-            c_df = pd.concat([split1, split2], axis = 1)
-        
-        else:
-            c_df = monthly_df
-            
-            if c_or_d == 'c':
-                dec_jan = pd.merge(cases[['County Name','2020-12-31']], c_df, on = "County Name")
-            else:
-                dec_jan = pd.merge(deaths[['County Name','2020-12-31']], c_df, on = "County Name")
-            
-            split1 = dec_jan.iloc[:,:1]
-            split2 = dec_jan.iloc[:,1:]
-        
-            if len(split2.columns) == 2:
-                split2.iloc[:,1] = split2.iloc[:,1] - split2.iloc[:,0]
-            
-            else:
-                for i in range(1,len(split2.columns)):
-                    split2.iloc[:,-i] = split2.iloc[:, -i] - split2.iloc[:,-i-1]
-            c_df = pd.concat([split1, split2], axis = 1)
-            c_df.drop(c_df.columns[1], axis = 1, inplace = True)
-    
-        return c_df
-    
-    c_mo_us = pd.merge(m_compiler(cases2020, 'c'), m_compiler(cases2021, 'c'), on = 'County Name').drop(['countyFIPS', 'State', 'StateFIPS'], axis = 1)
-    d_mo_us = pd.merge(m_compiler(deaths2020, 'd').drop(['countyFIPS', 'State', 'StateFIPS'], axis = 1), m_compiler(deaths2021, 'd'), on = 'County Name')
-    
-    covid_data = m_compiler(cases2020, 'c').iloc[:, :4]
-    
-    pop.drop(['countyFIPS', 'State'], axis = 1, inplace = True)
-    covid_data = pd.merge(covid_data, pop, on = 'County Name')        
-    
-    cd = covid_data.copy(deep = True)
-    
-    for i in range(1, len(c_mo_us.columns)):
-        cd = pd.merge(cd, pd.concat([c_mo_us['County Name'], c_mo_us.iloc[:,i:i+1]], axis = 1), on = 'County Name')
-        cd = pd.merge(cd, pd.concat([d_mo_us['County Name'], d_mo_us.iloc[:,i:i+1]], axis = 1), on = 'County Name')
-    
-    c_cols = []
-    d_cols = []
-
-    for col in cd.columns: 
-        col_cont = col.split()
-        if len(col_cont) == 3:
-            if col_cont[1] == 'Cases':
-                c_cols.append(col)
-            elif col_cont[1] == 'Deaths': 
-                d_cols.append(col)
-        
-    c_rates = pd.DataFrame()
-    d_rates = pd.DataFrame()
-    
-    for c_mo in c_cols:
-        c_rates[c_mo.split()[0] + ' ' + c_mo.split()[2] + ' Infection Rate (per 100,000)'] = round(cd[c_mo]/cd['Population'] * 100000, 2)
-    
-    for d_mo in d_cols:
-        d_rates[d_mo.split()[0] + ' ' + d_mo.split()[2] + ' Mortality Rate (per 100,000)'] = round(cd[d_mo]/cd['Population'] * 100000, 2)
-        
-    for i in range(0, len(c_rates.columns)):
-        covid_data = pd.merge(covid_data, pd.concat([cd['County Name'], c_rates.iloc[:,i:i+1]], axis = 1), on = 'County Name')
-        covid_data = pd.merge(covid_data, pd.concat([cd['County Name'], d_rates.iloc[:,i:i+1]], axis = 1), on = 'County Name')
-    
-    def projector(df, df2, c_or_d):
-        mo_days = {1 : 31,
-                   2 : (28,29),
-                   3 : 31,
-                   4 : 30,
-                   5 : 31,
-                   6: 30,
-                   7 : 31,
-                   8 : 31,
-                   9 : 30,
-                   10 : 31,
-                   11 : 30,
-                   12 : 31
-                  }
-    
-        latest_date = df.columns[-1].split('-')
-    
-        latest_day = int(latest_date[2])
-
-        latest_month = int(latest_date[1])
-
-        latest_year = int(latest_date[0])
-        
-        if latest_month != 2:
-            tot_days = [mo_days[val] for val in [latest_month]][0]
-        else:
-            if latest_year % 4 == 0:
-                tot_days = 29
-            else:
-                tot_days = 28
-    
-        perc_done = latest_day/tot_days
-    
-        no_mo = {1:'January',
-                 2:'February',
-                 3:'March',
-                 4:'April',
-                 5:'May',
-                 6:'June',
-                 7:'July',
-                 8:'August',
-                 9:'September',
-                 10:'October',
-                 11:'November',
-                 12:'December'
-                }
-        la_mo = [no_mo[val] for val in [latest_month]][0]
-        
-        if c_or_d == 'c':
-            latest_col = df2['{mo} Cases (2021)'.format(mo = la_mo)]
-            predicted_cases = (latest_col / perc_done).apply(lambda value: int(value))
-            predicted_i_r = pd.DataFrame(round(predicted_cases/df2['Population'] * 100000, 2))
-            predicted_i_r.columns = ['Predicted {mo} {yr} Infection Rate (per 100,000)'.format(mo = la_mo, yr = '(2021)')]
-
-            return predicted_i_r
-    
-        else:
-            latest_col = df2['{mo} Deaths (2021)'.format(mo = la_mo)]
-            predicted_deaths = (latest_col / perc_done).apply(lambda value: int(value))
-            predicted_m_r = pd.DataFrame(round(predicted_deaths/df2['Population'] * 100000, 2))
-            predicted_m_r.columns = ['Predicted {mo} {yr} Mortality Rate (per 100,000)'.format(mo = la_mo, yr = '(2021)')]    
-        
-            return predicted_m_r
-    
-    pred_inf = projector(cases2021, cd, 'c')
-    pred_dth = projector(deaths2021, cd, 'd')
-    
-    covid_data = pd.concat([covid_data, pred_inf, pred_dth], axis = 1)
-    
-    covid_data['Cumulative Infection Rate (per 100,000)'] = round(c_rates.mean(axis = 1), 2)
-    covid_data['Cumulative Mortality Rate (per 100,000)'] = round(d_rates.mean(axis = 1), 2)
-    
-    months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-    no_to_mo = {1:'January',
-                 2:'February',
-                 3:'March',
-                 4:'April',
-                 5:'May',
-                 6:'June',
-                 7:'July',
-                 8:'August',
-                 9:'September',
-                 10:'October',
-                 11:'November',
-                 12:'December'
-                }
-    
-    latest_date = cases2021.columns[-1].split('-')
-    
-    latest_day = int(latest_date[2])
-
-    latest_month = int(latest_date[1])
-
-    latest_year = int(latest_date[0])
-    
-    latest_month_name = no_to_mo[latest_month]
-
-    column_map = {'countyFIPS': 'County FIPS', 
-                  'StateFIPS': 'State FIPS', 
-                  '{} (2021) Infection Rate (per 100,000)'.format(latest_month_name): '{} (2021) Infection Rate (per 100,000 as of {}/{}/{})'.format(latest_month_name, latest_month, latest_day, latest_year),
-                  '{} (2021) Mortality Rate (per 100,000)'.format(latest_month_name): '{} (2021) Mortality Rate (per 100,000, as of {}/{}/{})'.format(latest_month_name, latest_month, latest_day, latest_year)
-                 }
-    
-    covid_data = covid_data.rename(columns = column_map)
-    
-    return covid_data
-
-    '''
-
 def create_covid_pop_data():
 
     no_mo = {1:'January',
@@ -644,9 +300,9 @@ def create_covid_pop_data():
     pop['County Name'] = pop['County Name']  + ', ' + pop['State']
     pop = pd.DataFrame(pop).rename(columns = {'population':'Population'})
     pop['County Name'] = pop['County Name'].apply(county_cleaner)
-    
-    def week_compiler(df, c_or_d):
 
+    def week_compiler(df, c_or_d):
+        
         week = pd.concat([df[df.columns[:3]], df[df.columns[-8:]]], axis = 1)
 
         rawdate = df.columns[-1] 
@@ -654,25 +310,53 @@ def create_covid_pop_data():
         
         date = '{month} {day}, {year}'.format(month = no_mo[month], day = day, year = year)
         
-        week['Weekly {c_or_d} as of {date}'.format(c_or_d = c_or_d, date = date)] = week[week.columns[-1]] - week[week.columns[-8]]
+        cols = df[df.columns[-36:]].columns
+        
+        g_dates = []
+
+        for i in range(1,len(cols)):
+            if i == 1:
+                g_dates.append(i)
+            else:
+                if (i-1)%7 == 0:
+                    g_dates.append(i)
+                            
+        for g_date in g_dates:
+            f_date, p_date = g_date+6, g_date-1
+            week['{}, Week of {}'.format(c_or_d, cols[g_date])] = df[cols[f_date]] - df[cols[p_date]]
+            week['{}, Week of {}'.format(c_or_d, cols[g_date])] = week['{}, Week of {}'.format(c_or_d, cols[g_date])].apply(lambda value: 0 if value < 0 else value)
+        
+        week['Weekly New {c_or_d} as of {date}'.format(c_or_d = c_or_d, date = date)] = week[week.columns[-6]] - week[week.columns[-13]]
         week.drop(week.columns[3:11], axis = 1, inplace = True)
         week.drop(['countyFIPS', 'State'], axis = 1, inplace = True)
         week = pd.merge(pop, week, on = 'County Name')
-        week['7-Day Daily {c_or_d} per 100,000 as of {date}'.format(c_or_d = c_or_d, date = date)] = round(((week['Weekly {c_or_d} as of {date}'.format(c_or_d = c_or_d, date = date)]/7)/ week['Population'])*100000, 2)
+        
+        case_cols = [col for col in week.columns if c_or_d in col and 'Weekly' not in col]
+        
+        for col in case_cols:
+            raw_date = col.split()[-1]
+            year, month, day = raw_date.split('-')
+            c_date = '{} {}, {}'.format(no_mo[int(month)], int(day), year)
+            
+            week['{} Moving Avg. {}'.format(c_or_d, c_date)] = round((((week[col]/7)/week['Population'])*100000),2)
+            
+            week.drop(col, axis = 1, inplace = True)
+        
+        week['7-Day Daily {c_or_d} per 100,000 as of {date}'.format(c_or_d = c_or_d, date = date)] = round(((week['Weekly New {c_or_d} as of {date}'.format(c_or_d = c_or_d, date = date)]/7)/ week['Population'])*100000, 2)
         week.drop(week[week['7-Day Daily {c_or_d} per 100,000 as of {date}'.format(c_or_d = c_or_d, date = date)] < 0].index, inplace = True)
         week = week.reset_index(drop = True)
-
+        
         return week
     
     cs = week_compiler(cases, 'Cases')
     ds = week_compiler(deaths, 'Deaths')
     
     covid_data = cs[cs.columns[:4]]
-    
+       
     cs.drop(ds.columns[[0,2,3]], axis = 1, inplace = True)
     ds.drop(ds.columns[[0,2,3]], axis = 1, inplace = True)
-    
-    for i in range(1,3):
+        
+    for i in range(1,8):
         covid_data = pd.merge(covid_data, cs[cs.columns[[0,i]]], on = 'County Name')
         covid_data = pd.merge(covid_data, ds[ds.columns[[0,i]]], on = 'County Name')
         
@@ -680,19 +364,126 @@ def create_covid_pop_data():
 
     return covid_data
 
-def main_function():
+def create_vaxx_data():
+    def data():
+        data = pd.read_csv('CDC VACCINE COUNTY DATA DOWNLOAD LINK')
+
+        no_mo = {1:'January',
+                 2:'February',
+                 3:'March',
+                 4:'April',
+                 5:'May',
+                 6:'June',
+                 7:'July',
+                 8:'August',
+                 9:'September',
+                 10:'October',
+                 11:'November',
+                 12:'December'
+             }
+
+        latest_date = data['Date'][0]
+
+        def word_name(date):
+            month, day, year = [int(value) for value in date.split('/')]
+            date = '{month} {day}, {year}'.format(month = no_mo[month], day = day, year = year)
+
+            return date
+
+        date = word_name(latest_date)
+
+        data['Recip_County'] = data['Recip_County'] + ', ' + data['Recip_State']
+
+        dates = list(data['Date'])
+
+        def get_months():
+
+            m_dates = []
+
+            l_month = 0
+
+            for date in dates:
+                month = int(date.split('/')[0])
+                if month != l_month:
+                    m_dates.append(date)
+                l_month = month
+
+            return m_dates
+
+        data = data[data['Date'].isin(get_months())]
+
+        for col in data.columns:
+            if col != 'Recip_County' and 'Pct' not in col and col != 'Date':
+                data.drop(col, axis = 1, inplace = True)
+
+        data.columns = ['Date', 'County Name', '% Fully Vaccinated as of {}'.format(date),'% ≥ 12 Fully Vaccinated as of {}'.format(date), '% ≥ 18 Fully Vaccinated as of {}'.format(date), '% ≥ 65 Fully Vaccinated as of {}'.format(date)]
+
+        dates = list(data['Date'])
+
+        data = data.iloc[::-1]
+
+        data.reset_index(drop = True, inplace = True)
+
+        data['Date'] = data['Date'].apply(lambda date: word_name(date))
+        
+        return data
+
+    data = data()
+    
+    filename = 'FILE NAME'
+    bucketname = 'BUCKET NAME'
+    
+    csv_buffer = StringIO()
+    data.to_csv(csv_buffer)
+    
+    client = boto3.client('s3')
+    
+    response = client.put_object(Body = csv_buffer.getvalue(), Bucket = bucketname, Key = filename)
+
+def combiner():
     
     race_data = create_race_data()
     inc_unemp_data = create_inc_unemp_data()
     edu_data = create_edu_data()
     mask_data = create_mask_data()
     covid_data = create_covid_pop_data()
-    vaxx_data = pd.read_csv('vaxxdataset.csv', index_col = 0)
     
+    # VAXX DATA
+
+    # puts vaxx data into bucket
+
+    create_vaxx_data()
+
+    # Reads vaxx data
+
+    vaxx_data = readbucketdata.readbucketdata('CHOICE')
+
+    date = list(vaxx_data['Date'])[-1]
+
+    vaxx_data = vaxx_data[vaxx_data['Date'] == date].drop('Date', axis = 1).reset_index(drop = True)
+    
+    # Combines all
+
     county_data = pd.merge(covid_data, inc_unemp_data, on = 'County Name')
     county_data = pd.merge(county_data, race_data, on = 'County Name')
     county_data = pd.merge(county_data, edu_data, on = 'County Name')
     county_data = pd.merge(county_data, mask_data, on = 'State')
     county_data = pd.merge(county_data, vaxx_data, on = 'County Name')
-    
+
     return county_data
+
+def main_function():
+    data = combiner()
+    
+    filename = 'FILE NAME'
+    bucketname = 'BUCKET NAME'
+    
+    csv_buffer = StringIO()
+    data.to_csv(csv_buffer)
+    
+    client = boto3.client('s3')
+    
+    response = client.put_object(Body = csv_buffer.getvalue(), Bucket = bucketname, Key = filename)
+
+if __name__ == '__main__':
+    main_function()
