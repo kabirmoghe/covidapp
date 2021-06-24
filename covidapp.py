@@ -1,17 +1,10 @@
 import numpy as np
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
-from urllib.request import urlopen
 import json
+from urllib.request import urlopen
 import plotly.express as px
-import matplotlib.pyplot as plt
-import seaborn as sns
 import plotly.graph_objects as go
-import chart_studio
-import chart_studio.plotly as py
-import chart_studio.tools as tls
-import covidapp
 
 def county_list():
     ctys = list(pd.read_csv('https://raw.githubusercontent.com/kabirmoghe/Demographic-Data/main/countynames.csv')['County Name'].values)
@@ -22,6 +15,7 @@ def county_stats(county_name):
         return "Please enter a county name (i.e. Orange County, CA)."
     else:
         data = pd.read_csv('fulldataset.csv', index_col = 0)
+        vaxx_data = pd.read_csv('vaxxdataset.csv', index_col = 0)
 
         data['County FIPS'] = data['County FIPS'].apply(lambda value: '0' + str(value) if len(str(value)) == 4 else str(value))
 
@@ -50,122 +44,124 @@ def county_stats(county_name):
 
         #red is greater than 25, high
 
-        if county_name in data['County Name'].values:
-            '''county_df = data[data['County Name'] == county_name][infs].transpose().reset_index()
-            county_df['Time'] = ["Jan '20", "Feb '20", "Mar '20", "Apr '20", "May '20", "Jun '20", "Jul '20", "Aug '20", "Sept '20", "Oct '20", "Nov '20", "Dec '20", "Jan '21", "Feb '21", "Mar '21", "Apr '21", "May '21"]
-            county_df['Infection Rate per 100,000 for {county_name}'.format(county_name = county_name)] = county_df.iloc[:,1]
+
+        '''county_df = data[data['County Name'] == county_name][infs].transpose().reset_index()
+        county_df['Time'] = ["Jan '20", "Feb '20", "Mar '20", "Apr '20", "May '20", "Jun '20", "Jul '20", "Aug '20", "Sept '20", "Oct '20", "Nov '20", "Dec '20", "Jan '21", "Feb '21", "Mar '21", "Apr '21", "May '21"]
+        county_df['Infection Rate per 100,000 for {county_name}'.format(county_name = county_name)] = county_df.iloc[:,1]
             
-            sns.barplot(x = "Time", y = 'Infection Rate per 100,000 for {county_name}'.format(county_name = county_name), data = county_df, palette = 'plasma').get_figure()
-            plt.savefig('/app/static/countyplot.png')
-            '''
-            des_row = data[data['County Name'] == str(county_name)]
+        sns.barplot(x = "Time", y = 'Infection Rate per 100,000 for {county_name}'.format(county_name = county_name), data = county_df, palette = 'plasma').get_figure()
+        plt.savefig('/app/static/countyplot.png')
+        '''
+        des_row = data[data['County Name'] == str(county_name)]
 
-            des_row.rename(index = {des_row.index.values[0]: county_name}, inplace = True)
+        des_row.rename(index = {des_row.index.values[0]: county_name}, inplace = True)
 
-            mask_info= [des_row[col].values[0] for col in des_row.columns if 'mask' in col.lower()]
+        mask_info= [des_row[col].values[0] for col in des_row.columns if 'mask' in col.lower()]
 
-            y_n_mask, mask_details = mask_info
+        y_n_mask, mask_details = mask_info
 
-            des_row.drop('Mask Mandate Details', axis = 1, inplace = True)
+        des_row.drop('Mask Mandate Details', axis = 1, inplace = True)
 
-            otherinfo = pd.concat([des_row['Population'], des_row.iloc[:, -15:]], axis = 1)
+        otherinfo = pd.concat([des_row['Population'], des_row.iloc[:, -15:]], axis = 1)
 
-            stat = des_row[inf_col].iloc[0]
+        stat = des_row[inf_col].iloc[0]
 
-            rank = sorted_data[sorted_data['County Name']==county_name].index[0]+1
+        rank = sorted_data[sorted_data['County Name']==county_name].index[0]+1
 
-            css_prop = stat/27
+        css_prop = stat/27
 
-            if css_prop <= 1:
-                css_prop = css_prop
-            else:
-                css_prop = 1.0
+        if css_prop <= 1:
+            css_prop = css_prop
+        else:
+            css_prop = 1.0
 
-            #pct = round(prop*100,2)
+        #pct = round(prop*100,2)
 
-            prop = (1-(rank/len(sorted_data)))
+        prop = (1-(rank/len(sorted_data)))
 
-            pct = round(prop*100, 2)
+        pct = round(prop*100, 2)
 
-            
 
-            if stat == 0.0:
-                rec = '{county_name} has a low risk of infection and is on track for containment. Regardless, precaution should be taken and social distancing guidelines should be followed.'.format(county_name = county_name)
+        if stat == 0.0:
+            rec = '{county_name} has a low risk of infection and is on track for containment. Regardless, some precaution should be taken and the guidelines below should be followed (see details below).'.format(county_name = county_name)
                 
+            color = '#7cff02'
+
+            info = "With a rank of {rank} out of {ctynum} included counties, {county_name} is one of the lowest counties in terms of {inf_col}.".format(rank = rank, ctynum = ctynum, county_name = county_name, pct = pct, inf_col = inf_col)
+            
+            risk = 'Low'
+
+        elif round(pct) == 100.0:
+            rec = 'There is a high risk of infection in {county_name}, so precaution should be taken and guidelines should be followed strictly (see details below).'.format(county_name = county_name)
+                
+            color = '#ff0600'
+
+            info = "With a rank of {rank} out of {ctynum} included counties, {county_name} is the highest county in terms of {inf_col}.".format(rank = rank, ctynum = ctynum, county_name = county_name, pct = pct, inf_col = inf_col)
+            
+            risk = 'High'
+
+        else:
+            if stat < green:
+                rec = '{county_name} has a low risk of infection and is on track for containment. Regardless, some precaution should be taken and guidelines should be followed (see details below).'.format(county_name = county_name)
+
                 color = '#7cff02'
 
-                info = "With a rank of {rank} out of {ctynum} included counties, {county_name} is one of the lowest counties in terms of {inf_col}.".format(rank = rank, ctynum = ctynum, county_name = county_name, pct = pct, inf_col = inf_col)
-         
-            elif round(pct) == 100.0:
-                rec = 'There is a high risk of infection in {county_name}, so precaution should be taken and social distancing guidelines should be followed strictly:'.format(county_name = county_name)
-                
+                risk = 'Low'
+
+            elif green <= stat < yellow:
+                rec = '{county_name} has a moderately low risk of infection, and strategic choices must be made about which package of non-pharmaceutical interventions to use for control. Precaution should be still be taken and guidelines should be followed (see details below).'.format(county_name = county_name)
+                    
+                color = '#fff800'
+
+                risk = 'Moderately Low'
+
+            elif yellow <= stat < orange:
+                rec = '{county_name} has a moderately high risk of infection, and strategic choices must be made about which package of non-pharmaceutical interventions to use for control. Stay-at-home orders are advised unless viral testing and contact tracing capacity are implementable at levels meeting surge indicator standards. Precaution should be taken and guidelines should be followed (see details below).'.format(county_name = county_name)
+
+                color = '#ffab00'
+
+                risk = 'Moderately High'
+
+            else:
+                rec = '{county_name} has a high risk of infection, and stay-at-home orders may be necessary. Extra precaution should be taken and guidelines should be followed (see details below).'.format(county_name = county_name)
+
                 color = '#ff0600'
 
-                info = "With a rank of {rank} out of {ctynum} included counties, {county_name} is the highest county in terms of {inf_col}.".format(rank = rank, ctynum = ctynum, county_name = county_name, pct = pct, inf_col = inf_col)
-            else:
-                if stat < green:
-                    rec = '{county_name} has a low risk of infection and is on track for containment. Regardless, precaution should be taken and social distancing guidelines should be followed.'.format(county_name = county_name)
+                risk = 'High'
 
-                    color = '#7cff02'
+            info = "With a rank of {rank} out of {ctynum} included counties, {county_name} is higher than {pct}% of counties in terms of {inf_col}.".format(rank = rank, ctynum = ctynum, county_name = county_name, pct = pct, inf_col = inf_col)
 
-                elif green <= stat < yellow:
-                    rec = '{county_name} has a moderately low risk of infection, and strategic choices must be made about which package of non-pharmaceutical interventions to use for control. Precaution should be taken and social distancing guidelines should be followed.'.format(county_name = county_name)
-                    
-                    color = '#fff800'
-
-                elif yellow <= stat < orange:
-                    rec = '{county_name} has a moderately high risk of infection, and strategic choices must be made about which package of non-pharmaceutical interventions to use for control. Stay-at-home orders are advised unless viral testing and contact tracing capacity are implementable at levels meeting surge indicator standards. Precaution should be taken and social distancing guidelines should be followed.'.format(county_name = county_name)
-
-                    color = '#ffab00'
-
-                else:
-                    rec = '{county_name} has a high risk of infection, and stay-at-home orders may be necessary. Precaution should be taken and social distancing guidelines should be followed.'.format(county_name = county_name)
-
-                    color = '#ff0600'
-
-                info = "With a rank of {rank} out of {ctynum} included counties, {county_name} is higher than {pct}% of counties in terms of {inf_col}.".format(rank = rank, ctynum = ctynum, county_name = county_name, pct = pct, inf_col = inf_col)
-
-            riskimg = 'riskchart.png'
-            risk_pos = (round(182+(346*css_prop),2))
+        riskimg = 'riskchart.png'
+        risk_pos = (round(26.5+(49*css_prop),2))
                 
-            return otherinfo, stat, info, rec, risk_pos, pct, y_n_mask, mask_details, color#, riskimg
-        else:
-            return "Please enter a valid county name (i.e. Orange County, CA). The county you entered, '{county_name}', may not have complete information.".format(county_name = county_name)
-
+        return otherinfo, stat, info, rec, risk_pos, pct, y_n_mask, mask_details, color, risk#, riskimg
+        
 def usplot(c_or_d):
     with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
         counties = json.load(response)
     
     data = pd.read_csv('fulldataset.csv', index_col = 0)
+    
+    data = data[data['State'] != 'NE']
+    data = data[data['State'] != 'FL']
 
     data['County FIPS'] = data['County FIPS'].apply(lambda value: '0' + str(value) if len(str(value)) == 4 else str(value))
     if c_or_d == 'c':
 
         last_case_rate = [column for column in data.columns if "Cases" in column.split() and "per" in column.split()][0]
-
+        
         date = last_case_rate.split('as of ')[1]
 
-        def log_maker(value):
-            if value != 0:
-                if np.log(value) < 0:
-                    return 0
-                else:
-                    return np.log(value)
-            else:
-                return value
-                
-
-        data['Log {name}'.format(name = last_case_rate)] = data[last_case_rate].apply(lambda value: log_maker(value))
-        
         num0 = len(data[data[last_case_rate] == 0])
 
-        fig = px.choropleth(data, geojson=counties, locations='County FIPS', color='Log {name}'.format(name = last_case_rate),
-                               color_continuous_scale="Plasma",
+        fig = px.choropleth(data, geojson=counties, locations='County FIPS', color=last_case_rate,
+                               color_continuous_scale=['#3EAC58', '#F6E520','#F6E520','#F6E520','#F6E520', '#ED9A0C', '#ED9A0C','#ED9A0C', '#ED9A0C', '#ED9A0C','#E64B01'],
                                hover_name = 'County Name',
                                hover_data=[last_case_rate, 'Population'],
-                               scope="usa",
-                               labels={'Log {name}'.format(name = last_case_rate):'Current Log. Daily Cases per 100k'}
-                              )
+                               scope="usa", range_color=[0,25],
+                               labels={last_case_rate:'Infection Risk (Daily Cases per 100k)'}
+
+                               )
         fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, font_family = "Raleway", hoverlabel_font_family = "Raleway")
         fig.update_traces(marker_line_width=0, marker_opacity=0.8, hoverlabel_bgcolor='#e3f1ff', hoverlabel_bordercolor = '#e3f1ff', hoverlabel_font_color='#000066')
         fig.update_geos(showsubunits=True, subunitcolor="black", subunitwidth = 1.4)
@@ -219,217 +215,194 @@ def usplot(c_or_d):
 
     return top10, bot10, date, num0
 
-'''
-def create_vaxx_data():
-    vaxx_url = 'https://usafactsstatic.blob.core.windows.net/public/data/covid-19/COVID19_Vaccination_Demographics.csv'
-    vaxx_data = pd.read_csv(vaxx_url)
-    
-    no_mo = {1:'January',
-                2:'February',
-                 3:'March',
-                 4:'April',
-                 5:'May',
-                 6:'June',
-                 7:'July',
-                 8:'August',
-                 9:'September',
-                 10:'October',
-                 11:'November',
-                 12:'December'
-                }
-    
-    raw_date = vaxx_data[vaxx_data['DEMOGRAPHIC_CATEGORY'] == 'TOTAL']['DATE'].values[0]
-    
-    year, month, day = [int(val) for val in raw_date.split('-')]
-    date = '{month} {day}, {year}'.format(month = no_mo[month], day = day, year = year)
-    
-    states = ["Alabama","Alaska","Arizona","Arkansas","California","Colorado",
-      "Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois",
-      "Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland",
-      "Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana",
-      "Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York",
-      "North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania",
-      "Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah",
-      "Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"]
-    
-    abbrev = {
-            'District of Columbia': 'DC',
-            'Puerto Rico': 'PR',
-            'Alabama': 'AL',
-            'Montana': 'MT',
-            'Alaska': 'AK',
-            'Nebraska': 'NE',
-            'Arizona': 'AZ',
-            'Nevada': 'NV',
-            'Arkansas': 'AR',
-            'New Hampshire': 'NH',
-            'California': 'CA',
-            'New Jersey': 'NJ',
-            'Colorado': 'CO',
-            'New Mexico': 'NM',
-            'Connecticut': 'CT',
-            'New York': 'NY',
-            'Delaware': 'DE',
-            'North Carolina': 'NC',
-            'Florida': 'FL',
-            'North Dakota': 'ND',
-            'Georgia': 'GA',
-            'Ohio': 'OH',
-            'Hawaii': 'HI',
-            'Oklahoma': 'OK',
-            'Idaho': 'ID',
-            'Oregon': 'OR',
-            'Illinois': 'IL',
-            'Pennsylvania': 'PA',
-            'Indiana': 'IN',
-            'Rhode Island': 'RI',
-            'Iowa': 'IA',
-            'South Carolina': 'SC',
-            'Kansas': 'KS',
-            'South Dakota': 'SD',
-            'Kentucky': 'KY',
-            'Tennessee': 'TN',
-            'Louisiana': 'LA',
-            'Texas': 'TX',
-            'Maine': 'ME',
-            'Utah': 'UT',
-            'Maryland': 'MD',
-            'Vermont': 'VT',
-            'Massachusetts': 'MA',
-            'Virginia': 'VA',
-            'Michigan': 'MI',
-            'Washington': 'WA',
-            'Minnesota': 'MN',
-            'West Virginia': 'WV',
-            'Mississippi': 'MS',
-            'Wisconsin': 'WI',
-            'Missouri': 'MO',
-            'Wyoming': 'WY',
-        }
-    
-    #CLEANING
-    
-    vaxx_data.drop('GEOGRAPHY_TYPE', axis = 1, inplace = True)
-    vaxx_data = vaxx_data.drop_duplicates()
-    
-    # FIX TEXAS DATA (APPROX. TOTAL FROM MALE AND FEMALE AVG)
-    tx = vaxx_data[vaxx_data['STATE_NAME'] == 'Texas'].reset_index(drop = True)
-    partial_avg = (float(tx[tx['DEMOGRAPHIC_GROUP'] == 'FEMALE']['Full_or_Partial_Vaccinated_Percent'].iloc[0]) + float(tx[tx['DEMOGRAPHIC_GROUP'] == 'MALE']['Full_or_Partial_Vaccinated_Percent'].iloc[0]))/2
-    full_avg = (float(tx[tx['DEMOGRAPHIC_GROUP'] == 'FEMALE']['Fully_Vaccinated_Percent'].iloc[0]) + float(tx[tx['DEMOGRAPHIC_GROUP'] == 'MALE']['Fully_Vaccinated_Percent'].iloc[0]))/2
+def avg_plot(cty):
 
-    add_tx = pd.DataFrame(tx.iloc[-2].values).transpose()
-    add_tx.columns = vaxx_data.columns
+    data = pd.read_csv('fulldataset.csv')
+    data = pd.concat([data['County Name'], data[[col for col in data.columns if 'Cases' in col and 'Moving Avg.' in col]]], axis = 1)
 
-    add_tx['DEMOGRAPHIC_CATEGORY'] = ["TOTAL"]
-    add_tx['DEMOGRAPHIC_GROUP'] = ["TOTAL"]
-    add_tx['ACS_Population'] = [""]
-    add_tx['Administered_Dose1_recip'] = [""]
-    add_tx['Administered_Dose2_recip'] = [""]
-    add_tx['Full_or_Partial_Vaccinated_Percent'] = [partial_avg]
-    add_tx['Fully_Vaccinated'] = [""]
-    add_tx['Fully_Vaccinated_Percent'] = [full_avg]
+    data = data[data['County Name'] == cty]
 
-    vaxx_data = pd.concat([vaxx_data, add_tx]).reset_index(drop = True)
-    
-    vaxx_breakdown = vaxx_data[vaxx_data['DEMOGRAPHIC_CATEGORY'] == 'TOTAL'][['STATE_NAME','Full_or_Partial_Vaccinated_Percent', 'Fully_Vaccinated_Percent']].reset_index(drop = True).rename(columns = {'STATE_NAME': 'State', 'Full_or_Partial_Vaccinated_Percent': '% ≥ 1 Dose', 'Fully_Vaccinated_Percent': '% Fully Vaccinated'})
-    
-    vaxx_breakdown['% ≥ 1 Dose'] = pd.to_numeric(vaxx_breakdown['% ≥ 1 Dose'], errors='coerce')
-    vaxx_breakdown = vaxx_breakdown.replace(np.nan, 0, regex=True)
+    data = data.transpose().iloc[1:].reset_index()
 
-    vaxx_breakdown['% ≥ 1 Dose'] = round(vaxx_breakdown['% ≥ 1 Dose']*100, 2)
+    data.columns = ['Date', 'Moving Avg']
 
-    vaxx_breakdown['% Fully Vaccinated'] = pd.to_numeric(vaxx_breakdown['% Fully Vaccinated'], errors='coerce')
-    vaxx_breakdown = vaxx_breakdown.replace(np.nan, 0, regex=True)
+    data['Date (Week of)'] = data['Date'].apply(lambda value: value.split('Avg. ')[-1])
+    data.drop('Date', axis = 1, inplace = True)
 
-    vaxx_breakdown['% Fully Vaccinated'] = round(vaxx_breakdown['% Fully Vaccinated']*100, 2)
-    
-    race_df = pd.concat([pd.DataFrame(states), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50)))], axis = 1)
-    race_df.columns = ['State','WHITE','BLACK','HISPANIC OR LATINO', 'ASIAN', 'NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER', 'AMERICAN INDIAN OR ALASKA NATIVE']
-    
-    race_breakdown = vaxx_data[vaxx_data['DEMOGRAPHIC_CATEGORY'] == 'RACE/ETHNICITY']
+    yval = 3
 
-    race_breakdown = race_breakdown[race_breakdown['DEMOGRAPHIC_GROUP'] != 'TWO OR MORE RACES']
-    race_breakdown = race_breakdown[race_breakdown['DEMOGRAPHIC_GROUP'] != 'OTHER']
-    race_breakdown = race_breakdown[race_breakdown['DEMOGRAPHIC_GROUP'] != 'NON-HISPANIC']
-
-    race_breakdown = race_breakdown[['STATE_NAME', 'DEMOGRAPHIC_GROUP', 'Full_or_Partial_Vaccinated_Percent', 'Fully_Vaccinated_Percent']]
-
-    race_breakdown['Full_or_Partial_Vaccinated_Percent'] = pd.to_numeric(race_breakdown['Full_or_Partial_Vaccinated_Percent'], errors='coerce')
-    race_breakdown = race_breakdown.replace(np.nan, 0, regex=True)
-
-    race_breakdown['Full_or_Partial_Vaccinated_Percent'] = race_breakdown['Full_or_Partial_Vaccinated_Percent']*100
-
-    race_breakdown['Fully_Vaccinated_Percent'] = pd.to_numeric(race_breakdown['Fully_Vaccinated_Percent'], errors='coerce')
-    race_breakdown = race_breakdown.replace(np.nan, 0, regex=True)
-
-    race_breakdown['Fully_Vaccinated_Percent'] = race_breakdown['Fully_Vaccinated_Percent']*100
-    
-    groups = ['WHITE','BLACK','HISPANIC OR LATINO', 'ASIAN', 'NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER', 'AMERICAN INDIAN OR ALASKA NATIVE']
-    
-    # Partial/Full Vaccination % By Race in Each State
-
-    for group in groups:
-        group_df = race_breakdown[race_breakdown['DEMOGRAPHIC_GROUP'] == group].reset_index(drop = True)
-        group_df = group_df.rename(columns = {'STATE_NAME': 'State','Full_or_Partial_Vaccinated_Percent': group})
-        group_df.drop(['DEMOGRAPHIC_GROUP', 'Fully_Vaccinated_Percent'], axis = 1, inplace = True)
-        for i in range(len(race_df.index)):
-            state = race_df['State'].iloc[i]
-            if state in group_df['State'].values:
-                value = group_df[group_df['State'] == state][group].iloc[0]
-                if value > 100:
-                    race_df[group].iloc[i] = 100
-                else: 
-                    value = round(value)
-                    race_df[group].iloc[i] = group_df[group_df['State'] == state][group].iloc[0]     
+    for value in data['Moving Avg']:
+        if value >= 25:
+            if (value-27)+3 > yval:
+                yval = (value-27)+3
             else:
-                race_df[group].iloc[i] = 'N/A'
-    
-    # Adding new columns and changing names
+                None
+        else:
+            None
 
-    race_df = pd.concat([race_df, pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50))), pd.DataFrame(list(range(0,50)))], axis = 1)
+    fig = go.Figure()
+    
+    fig.add_trace(go.Scatter(
+        x=data['Date (Week of)'], 
+        y=[1,1,1,1,1],
+        name = 'Low',
+        hoverinfo='skip',
+        mode='lines',
+        line=dict(width=0.5, color='#69F68C'),
+        stackgroup='one' # define stack group
+    ))
+    
+    fig.add_trace(go.Scatter(
+        name = 'Mod. Low',
+        x=data['Date (Week of)'], 
+        y=[9,9,9,9,9],
+        hoverinfo='skip',
+        mode='lines',
+        line=dict(width=0.5, color='#fff800'),
+        stackgroup='one' # define stack group
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=data['Date (Week of)'], 
+        y=[15,15,15,15,15],
+        hoverinfo='skip',
+        name = 'Mod. High',
+        mode='lines',
+        line=dict(width=0.5, color='#ffab00'),
+        stackgroup='one' # define stack group
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=data['Date (Week of)'], 
+        y=[yval for i in range(5)],
+        hoverinfo='skip',
+        mode='lines',
+        name = 'High',
+        line=dict(width=0.5, color='#ff0600'),
+        stackgroup='one' # define stack group
+    ))
+    
+    fig.add_trace(go.Scatter(
+            name='Moving Avg',
+            x=data['Date (Week of)'],
+            y=data['Moving Avg'],
+            hoverinfo = 'name+y',
+            mode = 'lines',
+            line=dict(
+                color='#64B1FC')
+        ))
+    
+    fig.update_layout(
+        yaxis_title='Moving Average', yaxis_range=[0,25+yval], xaxis_title = 'Date (Week of)',
+        title='Moving Average Past 5 weeks', title_x = 0.5, font_family="Raleway", hoverlabel_font_family = 'Raleway'
+    )
 
-    race_df.columns = ['State','% White ≥ 1 Dose', '% Black ≥ 1 Dose', '% Hispanic or Latino ≥ 1 Dose','% Asian ≥ 1 Dose', '% Native Hawaiian/Other Pacific Islander ≥ 1 Dose', '% Native American/Alaska Native ≥ 1 Dose', 'WHITE','BLACK','HISPANIC OR LATINO', 'ASIAN', 'NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER', 'AMERICAN INDIAN OR ALASKA NATIVE']
-    
-    # Full Vaccination % By Race in Each State
 
-    for group in groups:
-        group_df = race_breakdown[race_breakdown['DEMOGRAPHIC_GROUP'] == group].reset_index(drop = True)
-        group_df = group_df.rename(columns = {'STATE_NAME': 'State','Fully_Vaccinated_Percent': group})
-        group_df.drop(['DEMOGRAPHIC_GROUP', 'Full_or_Partial_Vaccinated_Percent'], axis = 1, inplace = True)
-        for i in range(len(race_df.index)):
-            state = race_df['State'].iloc[i]
-            if state in group_df['State'].values:
-                value = group_df[group_df['State'] == state][group].iloc[0]
-                if value > 100:
-                    race_df[group].iloc[i] = 100.00
-                else: 
-                    value = round(value)
-                    race_df[group].iloc[i] = group_df[group_df['State'] == state][group].iloc[0]     
-            else:
-                race_df[group].iloc[i] = 'N/A'
-                
-    race_df.columns = ['State','% White ≥ 1 Dose', '% Black ≥ 1 Dose', '% Hispanic or Latino ≥ 1 Dose','% Asian ≥ 1 Dose', '% Native Hawaiian/Other Pacific Islander ≥ 1 Dose', '% Native American/Alaska Native ≥ 1 Dose','% White Fully Vaccinated', '% Black Fully Vaccinated', '% Hispanic or Latino Fully Vaccinated','% Asian Fully Vaccinated', '% Native Hawaiian/Other Pacific Islander Fully Vaccinated', '% Native American/Alaska Native Fully Vaccinated']
-    
-    vaxx_info = pd.merge(vaxx_breakdown, race_df, on = 'State')
-    
-    vaxx_info['State'] = vaxx_info['State'].map(abbrev)
-    
-    return date, vaxx_info
-'''
+    fig.write_html('/app/templates/{cty}_movingavgplot.html'.format(cty = cty), full_html = False)
+
 def vaxx_plot(cty):
     
+    data = pd.read_csv('vaxxdataset.csv', index_col = 0)
+    
+    data = data[data['County Name'] == cty]
+    
+    if len(data) == 0:
+        return 
+
+    full_date = list(data['Date'])[-1]
+    
+    data.reset_index(drop = True, inplace = True)
+    
+    no_mo = {'January':'Jan.',
+             'February':'Feb.',
+             'March':'Mar.',
+             'April':'Apr.',
+             'May':'May',
+             'June':'Jun.',
+             'July':'Jul.',
+             'August':'Aug.',
+             'September':'Sep.',
+             'October':'Oct.',
+             'November':'Nov.',
+             'December':'Dec.'
+         }
+    
+    def easy_name(date):
+        
+        date = date.split()
+        
+        mo = no_mo[date[0]]
+        yr = "'{}".format((date[2])[2:])
+        
+        return '{} {}'.format(mo, yr)
+        
+    data['Date'] = data['Date'].apply(lambda value: easy_name(value))
+    
+    date = list(data['Date'])[-1]
+    
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+            name='Target Adults % Fully Vaxx.',
+            x=data['Date'],
+            hoverinfo = 'y',
+            y=[76.51 for i in range(len(data))],
+            line=dict(
+                color='#FF8195', dash = 'dash', width = 3
+            ),
+            mode='lines'
+        ))
+    
+
+    fig.add_trace(go.Scatter(
+            name='% Fully Vaccinated',
+            x=data['Date'],
+            y=data['% Fully Vaccinated as of {}'.format(full_date)],
+            marker=dict(
+                color='#69F68C')
+        ))
+
+    fig.add_trace(go.Scatter(
+            name='% 12+ Fully Vaxx.',
+            x=data['Date'],
+            y=data['% ≥ 12 Fully Vaccinated as of {}'.format(full_date)],
+            marker=dict(
+                color='#81B8FF')
+        ))
+
+
+    fig.add_trace(go.Scatter(
+            name='% 18+ Fully Vaxx.',
+            x=data['Date'],
+            y=data['% ≥ 18 Fully Vaccinated as of {}'.format(full_date)],
+            marker=dict(
+                color='#FF8195')
+        ))
+
+    fig.add_trace(go.Scatter(
+            name='% 65+ Fully Vaxx.',
+            x=data['Date'],
+            y=data['% ≥ 65 Fully Vaccinated as of {}'.format(full_date)],
+            marker=dict(
+                color='#FFC300')
+        ))
+    fig.update_layout(
+        yaxis_title='% Fully Vaccinated', yaxis_range=[0,100], xaxis_title = 'Month',
+        title='Vaccination Progress for {}, {}'.format(cty, full_date), title_x = 0.5, font_family="Raleway", hoverlabel_font_family = 'Raleway'
+    )
+    
+    #--
+
     data = pd.read_csv('fulldataset.csv', index_col = 0)
-    
-    date = [col for col in data.columns if 'Fully' in col][-1].split('as of ')[1]
 
-    df = data[data['County Name'] == cty]
-    
-    fig = go.Figure()    
+    data = data[data['County Name'] == cty]
 
-    fig.add_trace(go.Bar(
-    y=df['County Name'],
-    x=df['% Fully Vaccinated as of {}'.format(date)],
-    width=[0.1],
+    fig2 = go.Figure()    
+
+    fig2.add_trace(go.Bar(
+    y=['All'],
+    x=data['% Fully Vaccinated as of {}'.format(full_date)],
+    width=[0.5],
     name='% Fully Vaxx.',
     orientation='h',
     marker=dict(
@@ -437,10 +410,10 @@ def vaxx_plot(cty):
         )
     ))
 
-    fig.add_trace(go.Bar(
-    y=df['County Name'],
-    x=df['% ≥ 12 Fully Vaccinated as of {}'.format(date)],
-    width=[0.1],
+    fig2.add_trace(go.Bar(
+    y=['12+'],
+    x=data['% ≥ 12 Fully Vaccinated as of {}'.format(full_date)],
+    width=[0.5],
     name='% 12+ Fully Vaxx.',
     orientation='h',
     marker=dict(
@@ -448,10 +421,10 @@ def vaxx_plot(cty):
         )
     ))
 
-    fig.add_trace(go.Bar(
-    y=df['County Name'],
-    x=df['% ≥ 18 Fully Vaccinated as of {}'.format(date)],
-    width=[0.1],
+    fig2.add_trace(go.Bar(
+    y=['18+'],
+    x=data['% ≥ 18 Fully Vaccinated as of {}'.format(full_date)],
+    width=[0.5],
     name='% 18+ Fully Vaxx.',
     orientation='h',
     marker=dict(
@@ -459,10 +432,10 @@ def vaxx_plot(cty):
         )
     ))
 
-    fig.add_trace(go.Bar(
-    y=df['County Name'],
-    x=df['% ≥ 65 Fully Vaccinated as of {}'.format(date)],
-    width=[0.1],
+    fig2.add_trace(go.Bar(
+    y = ['65+'],
+    x=data['% ≥ 65 Fully Vaccinated as of {}'.format(full_date)],
+    width=[0.5],
     name='% 65+ Fully Vaxx.',
     orientation='h',
     marker=dict(
@@ -470,10 +443,13 @@ def vaxx_plot(cty):
         )
     ))
 
-    fig.update_layout(xaxis_range=[0,100], title ={'text':'Vaccination Progress in % People Vaccinated as of {}'.format(date) ,'xanchor': 'center',
-        'yanchor': 'top'}, xaxis_title="% People Vaccinated", font_family="Raleway", hoverlabel_font_family = 'Raleway', title_x=0.5)
+    fig2.update_layout(xaxis_range=[0,100], title ={'text':'Current % Vaccinated, {}'.format(full_date) ,'xanchor': 'center',
+        'yanchor': 'top'}, xaxis_title="% People Vaccinated", yaxis_title = 'Age Demographic', font_family="Raleway", hoverlabel_font_family = 'Raleway', title_x=0.5)
 
-    fig.write_html('/app/templates/{cty}_vaxxplot.html'.format(cty = cty), full_html = False)
+
+    fig.write_html('/app/templates/{cty}_vaxxprogressplot.html'.format(cty = cty), full_html = False)
+    fig2.write_html('/app/templates/{cty}_vaxxplot.html'.format(cty = cty), full_html = False)
+
 
 def multivaxx_plot():
     
@@ -630,39 +606,23 @@ def multivaxx_plot():
 
     return date
 
+
 def scatter(x, y, trendline):
 
-    data = pd.read_csv('fulldataset.csv')
+    data = pd.read_csv('fulldataset.csv', index_col = 0)
     vaxx_col = [col for col in data.columns if "Fully" in col and "≥" not in col][0]
     data = data[data[vaxx_col] != 0]
-
+    
     if trendline == 'y': 
-        fig = px.scatter(x=data[x], y=data[y], trendline="ols", labels={
+        fig = px.scatter(data_frame = data, x = x, y=y, trendline="ols", labels={
                      "x": x,
-                     "y": y}, title="Scatterplot of {} and {}".format(x, y))
+                     "y": y}, title="Scatterplot of {} and {}".format(x, y),
+                     hover_name = 'County Name')
     else:
-        fig = px.scatter(x=data[x], y=data[y], labels={
+        fig = px.scatter(data_frame = data, x=x, y=y, labels={
                      "x": x,
-                     "y": y}, title="Scatterplot of {} and {}".format(x, y))
+                     "y": y}, title="Scatterplot of {} and {}".format(x, y),
+                     hover_name = 'County Name')
     fig.update_layout(font_family = "Raleway", hoverlabel_font_family = "Raleway", title_x = 0.5)
     
     fig.write_html('/app/templates/{}_{}_{}.html'.format(trendline, x, y), full_html = False)
-'''
-def violinplot(x, y, points):
-
-    data = pd.read_csv('fulldataset.csv')
-    vaxx_col = [col for col in data.columns if "Fully" in col and "≥" not in col][0]
-    data = data[data[vaxx_col] != 0]
-
-    if trendline == 'y': 
-        fig = px.scatter(x=data[x], y=data[y], trendline="ols", labels={
-                     "x": x,
-                     "y": y}, title="Scatterplot of {} and {}".format(x, y))
-    else:
-        fig = px.scatter(x=data[x], y=data[y], labels={
-                     "x": x,
-                     "y": y}, title="Scatterplot of {} and {}".format(x, y))
-    fig.update_layout(font_family = "Raleway", hoverlabel_font_family = "Raleway", title_x = 0.5)
-    
-    fig.write_html('/app/templates/{}_{}_{}.html'.format(trendline, x, y), full_html = False)
-'''
