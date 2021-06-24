@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Live County COVID-19 Data</title>
+	<link rel="stylesheet" type = "text/css" href="{{ url_for('static', filename = 'style.css')}}">
+	<link rel="shortcut icon" href="{{ url_for('static', filename = 'favicon.ico') }}">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<script type="application/javascript">
+    var loadCounter = 0;
+    var loaded = function() {
+        loadCounter += 1;
+        if (loadCounter === 2) {
+            $("iframe").attr("height", "210px");
+            $(window).scrollTo(315,0)
+        }
+    }
+	</script>
+
+</head>
+<body>
+	{% extends "base.html" %}
+	{% block titles %}Home Page{% endblock %}
+	{% block content%}
+	<br>
+	<div class = 'ncontent'>
+		<div class = 'title'>
+			<h3>About this project</h3>
+			<p>Hi! I'm Kabir, and I created this application to provide information on a granular level about the spread and local impact of COVID-19. The app allows users to understand the current situation of the pandemic in their county, understand vaccination data, and explore the relationship between various county attributes and COVID-19 data. 
+			<br><br>
+			<h4>References</h4>
+			<p>The self-updating data set compiles data from the sources below:</p>
+				<ol>
+					<li>Cumulative COVID-19 Case and Death Tallies: <a href="https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/" target = '_blank'>USAFacts</a></li>
+					<li>Vaccinations: <a href="https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-County/8xkx-amqh" target = '_blank'>CDC</a></li>
+					<li>Mask/Social-Distancing Policies: <a href="https://www.aarp.org/health/healthy-living/info-2020/states-mask-mandates-coronavirus.html" target = '_blank'>AARP</a></li>
+					<li>Race Demographics: <a href="https://www2.census.gov/programs-surveys/popest/datasets/2010-2020/counties/totals/" target = '_blank'>US Census Bureau</a></li>
+					<li>Unemployment, Income, and Education: <a href="https://www.ers.usda.gov/data-products/county-level-data-sets/download-data/" target = '_blank'>USDA</a></li>
+					<li>Calculated Population Density: <a href="https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/" target = "_blank">USAFacts</a> and <a href="https://hub.arcgis.com/datasets/esri::usa-counties/about" target = "_blank">ArcGIS</a></li>
+				</ol>
+			<h4 id = 'methodology'><br>Methodology</h4>
+		</div>
+	</div>
+	<div class = 'content'>
+		<div class = 'title'><p></p>
+			<img style="max-width: 100%; height: auto;" src="{{url_for('static', filename='movingavg.png')}}" alt="Moving Average Calculation">
+			<p></p>
+		</div>
+	</div>
+	<div class = 'ncontent'>
+		<div class = 'title'>
+			<p>In order to determine the risk of infection in a certain county, the 7-Day <a href="https://www.georgiaruralhealth.org/blog/what-is-a-moving-average-and-why-is-it-useful/" target = '_blank'>moving average</a> was used, which is the average number of new cases each day over the past week per 100,000 people (calculation shown above). Since county-wide population varies, 100,000 is a commonly used number to have normalized rates across all counties, so simple percentages are scaled to a number of cases out of 100,000.</p>
+		</div>
+	</div>
+	<div class = 'content'>
+		<div class = 'title'>
+			<img style="max-width: 70%; height: auto;" src="{{url_for('static', filename='risklabeled.png')}}" alt="Breakdown of Infection Rates Risk">
+		</div>
+	</div>
+	<div class = 'ncontent'>
+		<div class = 'title'>
+		    <br>To calculate risk from the moving average, the methods from the <a href="https://ethics.harvard.edu/files/center-for-ethics/files/key_metrics_and_indicators_v4.pdf" target = '_blank'>Harvard Global Health Institute</a> were used. Specifically, as shown by the key above, <strong>low</strong> risk (green) is determined as less than 1 new case per day, <strong>moderately low</strong> risk (yellow) as 1 or more but less than 10 new cases per day, <strong>moderately high</strong> risk (orange) as 10 or more but less than 25 new cases per day, and <strong>high</strong> risk (red) as 25 or more new cases per day (all according to the 7-day moving average).</p>
+		</div>
+	</div>
+	<div class = 'ncontent' id = 'feedback'>
+		<div class = 'title'>
+			<br>
+			<h4>Other Notes</h4>
+			<p>
+			<a href="https://towardsdatascience.com/county-based-covid-19-dataset-and-analytical-trends-ff1617030ba8" target="_blank">Click here</a> to learn about some analysis I performed last August using the data from then.</p>
+			<p>The code for this web app can also be accessed <a href="https://github.com/kabirmoghe/covidapp" target="_blank">here</a>.</p>
+			<p>Contact me at <a href="mailto: kabirmoghe@gmail.com">kabirmoghe@gmail.com</a> with any questions, and if you have any feedback or issues, feel free to leave it in the form below. Thanks!</p>
+			<br>
+		</div>
+	</div>
+
+
+	<div class = 'content'>
+		<div class = 'title' style = 'background-color: #EEF1F8; border: none; border-radius: 8px; padding-right, padding-left, padding-bottom: 6px; padding-top:16px;'>
+			<iframe  src="https://docs.google.com/forms/d/e/1FAIpQLSdS_L5OIKnT3p9Mwo7pHsXZ35dN5_njHP5KlP2YhKvnzWP5WA/viewform?embedded=true" width="100%" height="1910x" onload="loaded()"  frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+		</div>
+	</div>
+
+	<p></p>
+<!--
+	<div class="content">
+		<div class = 'title'>
+
+			<form action = "mailto:livecovidapp@gmail.com" method = "post" enctype="multipart/form-data" name="EmailForm">
+				<br>
+				<input type="text" size="19" name="ContactName"><br><br>
+				<textarea name="ContactComment" rows="6" cols="20"></textarea>
+				<br>
+				<input type="submit" id = 'getresults' name="anything_submit" value = "Submit">
+			</form>
+		</div>
+	</div>
+	-->
+
+	{% endblock %}
+</body>
+</html>
