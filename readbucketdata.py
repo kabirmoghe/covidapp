@@ -7,12 +7,12 @@ import pandas as pd
 def readbucketdata(file):
 
     if file == 'vaxx':
-        filename = 'vaxxdataset.csv'
+        filename = 'csv for Vaxx data'
 
     else:
-        filename = 'fulldataset.csv'
+        filename = 'csv for Full data'
     
-    bucketname = 'coviddatakm'
+    bucketname = 'BUCKET NAME'
 
     client = boto3.client('s3')
 
